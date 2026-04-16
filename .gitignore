@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Build and cache outputs
+dist/
+coverage/
+artifacts/
+cache/
+IPL_Blockchain_System/build/
+IPL_Blockchain_System/coverage/
+IPL_Blockchain_System/cache/
+
+# Truffle / local chain data
+*.db
+*.db-journal
+chaindata/
+truffle-data/
+.ganache-fresh/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# IDE / OS
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp

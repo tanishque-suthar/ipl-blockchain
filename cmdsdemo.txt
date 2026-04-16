@@ -1,0 +1,204 @@
+npx truffle compile --all
+npx truffle migrate --reset --network development
+npx truffle test
+
+Important:
+
+Run one line at a time in Truffle console.
+After each transaction, inspect tx.receipt.status and tx.logs.
+For view functions, inspect returned values directly.
+Step 1: Fresh deploy and open console
+
+cd D:\projects\cbd78\IPL_Blockchain_System
+npx truffle migrate --reset --network development
+npx truffle console --network development
+Step 2: Setup handles and test accounts
+
+accounts = await web3.eth.getAccounts()
+owner = accounts[0]
+treasury = accounts[1]
+seller = accounts[2]
+buyer = accounts[3]
+oracleUser = accounts[4]
+outsider = accounts[5]
+ticket = await IPLTicket.deployed()
+market = await IPLTicketMarketplace.deployed()
+reward = await IPLReward.deployed()
+gov = await IPLGovernance.deployed()
+Step 3: IPLTicket function-by-function
+
+View variables
+
+await ticket.primaryMintOpen()
+await ticket.marketplaceOnlyTransfers()
+await ticket.marketplace()
+await ticket.isWhitelisted(seller)
+setPrimaryMintOpen(bool)
+
+tx = await ticket.setPrimaryMintOpen(true, { from: owner })
+tx.receipt.status
+tx.logs.map(l => l.event)
+setWhitelist(address[],bool)
+
+tx = await ticket.setWhitelist([seller], true, { from: owner })
+tx.logs[0].event
+await ticket.isWhitelisted(seller)
+setMarketplace(address,bool)
+
+tx = await ticket.setMarketplace(market.address, true, { from: owner })
+tx.logs[0].args
+setDefaultRoyalty(address,uint96)
+
+tx = await ticket.setDefaultRoyalty(treasury, 500, { from: owner })
+tx.receipt.status
+await ticket.royaltyInfo(1, web3.utils.toWei("1", "ether"))
+mintPrimaryTicket(uint256,uint256,uint8,string)
+
+tx = await ticket.mintPrimaryTicket(9001, 11, 2, "ipfs://ticket-primary-9001-11", { from: seller })
+tx.logs.map(l => l.event)
+tokenIdPrimary = tx.logs.find(l => l.event === "TicketMinted").args.tokenId.toString()
+tokenIdPrimary
+adminMintTicket(address,uint256,uint256,uint8,string)
+
+tx = await ticket.adminMintTicket(buyer, 9002, 22, 3, "ipfs://ticket-admin-9002-22", { from: owner })
+tokenIdAdmin = tx.logs.find(l => l.event === "TicketMinted").args.tokenId.toString()
+tokenIdAdmin
+getTicketInfo(uint256)
+
+await ticket.getTicketInfo(tokenIdPrimary)
+await ticket.getTicketInfo(tokenIdAdmin)
+ticketRarityWeight(uint256)
+
+(await ticket.ticketRarityWeight(tokenIdPrimary)).toString()
+(await ticket.ticketRarityWeight(tokenIdAdmin)).toString()
+tokenURI(uint256)
+
+await ticket.tokenURI(tokenIdPrimary)
+await ticket.tokenURI(tokenIdAdmin)
+supportsInterface(bytes4)
+
+await ticket.supportsInterface("0x80ac58cd")
+await ticket.supportsInterface("0x2a55205a")
+Step 4: IPLTicketMarketplace function-by-function
+
+Read config
+
+await market.tdsTreasury()
+(await market.tdsBps()).toString()
+setTdsTreasury(address)
+
+tx = await market.setTdsTreasury(treasury, { from: owner })
+tx.receipt.status
+await market.tdsTreasury()
+setTdsBps(uint96)
+
+tx = await market.setTdsBps(100, { from: owner })
+tx.receipt.status
+(await market.tdsBps()).toString()
+createListing(address,uint256,uint256,uint256)
+
+await ticket.approve(market.address, tokenIdPrimary, { from: seller })
+price = web3.utils.toWei("0.2", "ether")
+exp = Math.floor(Date.now() / 1000) + 3600
+tx = await market.createListing(ticket.address, tokenIdPrimary, price, exp, { from: seller })
+tx.logs.map(l => l.event)
+await market.listings(ticket.address, tokenIdPrimary)
+cancelListing(address,uint256)
+
+tx = await market.cancelListing(ticket.address, tokenIdPrimary, { from: seller })
+tx.logs.map(l => l.event)
+await ticket.ownerOf(tokenIdPrimary)
+Re-list then buyListing(address,uint256)
+
+await ticket.approve(market.address, tokenIdPrimary, { from: seller })
+tx = await market.createListing(ticket.address, tokenIdPrimary, price, Math.floor(Date.now()/1000)+3600, { from: seller })
+tx = await market.buyListing(ticket.address, tokenIdPrimary, { from: buyer, value: price })
+tx.logs.find(l => l.event === "ListingPurchased").args
+await ticket.ownerOf(tokenIdPrimary)
+Step 5: IPLReward function-by-function
+
+Role constants
+
+ORACLE_ROLE = await reward.ORACLE_ROLE()
+MINTER_ROLE = await reward.MINTER_ROLE()
+setURI(string)
+
+tx = await reward.setURI("ipfs://new-reward/{id}.json", { from: owner })
+tx.receipt.status
+await reward.uri(7001)
+mintDigitalMoment(address,uint256,uint256,uint256,bytes32,string,bytes)
+
+eventHash1 = web3.utils.keccak256("century-9001")
+tx = await reward.mintDigitalMoment(buyer, 7001, 1, 9001, eventHash1, "ipfs://moment-7001", "0x", { from: owner })
+tx.logs.map(l => l.event)
+(await reward.balanceOf(buyer, 7001)).toString()
+getProvenance(uint256)
+
+await reward.getProvenance(7001)
+grantRole + oracleMintDigitalMoment(...)
+
+tx = await reward.grantRole(ORACLE_ROLE, oracleUser, { from: owner })
+tx.receipt.status
+eventHash2 = web3.utils.keccak256("wicket-9001")
+reqId = web3.utils.keccak256("req-7002")
+tx = await reward.oracleMintDigitalMoment(reqId, buyer, 7002, 1, 9001, eventHash2, "ipfs://moment-7002", "0x", { from: oracleUser })
+tx.logs.map(l => l.event)
+(await reward.balanceOf(buyer, 7002)).toString()
+mintFanVotingPoints(address,uint256,bytes)
+
+tx = await reward.mintFanVotingPoints(buyer, 500, "0x", { from: owner })
+tx.logs.map(l => l.event)
+pointsId = (await reward.FAN_VOTING_POINTS_ID()).toString()
+(await reward.balanceOf(buyer, pointsId)).toString()
+supportsInterface(bytes4)
+
+await reward.supportsInterface("0xd9b67a26")
+await reward.supportsInterface("0x7965db0b")
+Step 6: IPLGovernance function-by-function
+
+Read defaults
+
+(await gov.defaultVotingBlocks()).toString()
+(await gov.minQuorumWeight()).toString()
+setDefaultVotingBlocks(uint256)
+
+tx = await gov.setDefaultVotingBlocks(3, { from: owner })
+tx.receipt.status
+(await gov.defaultVotingBlocks()).toString()
+setMinQuorumWeight(uint256)
+
+tx = await gov.setMinQuorumWeight(1, { from: owner })
+tx.receipt.status
+(await gov.minQuorumWeight()).toString()
+createProposal(string,string,uint256)
+
+tx = await gov.createProposal("Manual Proposal", "Check full function outputs", 3, { from: owner })
+tx.logs.map(l => l.event)
+proposalId = tx.logs.find(l => l.event === "ProposalCreated").args.proposalId.toString()
+proposalId
+proposalState(uint256) and getProposal(uint256)
+
+(await gov.proposalState(proposalId)).toString()
+await gov.getProposal(proposalId)
+castVote(uint256,bool,uint256[])
+
+tx = await gov.castVote(proposalId, true, [tokenIdPrimary, tokenIdAdmin], { from: buyer })
+tx.logs.find(l => l.event === "VoteCast").args
+Mine blocks so voting ends
+
+await new Promise((res, rej) => web3.currentProvider.send({ jsonrpc: "2.0", method: "evm_mine", params: [], id: 1 }, (e, r) => e ? rej(e) : res(r)))
+await new Promise((res, rej) => web3.currentProvider.send({ jsonrpc: "2.0", method: "evm_mine", params: [], id: 2 }, (e, r) => e ? rej(e) : res(r)))
+await new Promise((res, rej) => web3.currentProvider.send({ jsonrpc: "2.0", method: "evm_mine", params: [], id: 3 }, (e, r) => e ? rej(e) : res(r)))
+await new Promise((res, rej) => web3.currentProvider.send({ jsonrpc: "2.0", method: "evm_mine", params: [], id: 4 }, (e, r) => e ? rej(e) : res(r)))
+finalizeProposal(uint256)
+
+tx = await gov.finalizeProposal(proposalId, { from: owner })
+tx.logs.find(l => l.event === "ProposalFinalized").args
+(await gov.proposalState(proposalId)).toString()
+await gov.getProposal(proposalId)
+Optional revert checks (manual negative testing)
+
+try { await ticket.mintPrimaryTicket(9001, 11, 2, "ipfs://dup", { from: seller }) } catch (e) { console.log(e.reason || e.message) }
+try { await market.setTdsBps(10001, { from: owner }) } catch (e) { console.log(e.reason || e.message) }
+try { await reward.mintFanVotingPoints(buyer, 1, "0x", { from: outsider }) } catch (e) { console.log(e.reason || e.message) }
+try { await gov.castVote(proposalId, true, [tokenIdPrimary], { from: buyer }) } catch (e) { console.log(e.reason || e.message) }
